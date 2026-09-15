@@ -544,7 +544,7 @@ body.campaign2-active {
 
 .c2-dispatch-copy {
     color: #553923;
-    font: 400 1rem/1.55 'Playwrite NZ Guides', cursive;
+    font: 400 1rem/1.55 'Playwrite US Trad', cursive;
 }
 
 .c2-folio .c2-journal-title {
@@ -558,7 +558,7 @@ body.campaign2-active {
     display: block;
     margin-bottom: 10px;
     color: #875b36;
-    font: 700 0.82rem/1.35 'Playwrite NZ Guides', cursive;
+    font: 700 0.82rem/1.35 'Playwrite US Trad', cursive;
     letter-spacing: 0.02em;
     text-transform: none;
 }
@@ -649,6 +649,10 @@ body.campaign2-active {
     text-align: center;
 }
 
+.c2-archive-loading {
+    font-family: 'Playwrite US Trad', cursive;
+}
+
 .c2-archive-index section + section {
     margin-top: 28px;
 }
@@ -708,7 +712,7 @@ body.campaign2-active {
 .c2-journal-list article {
     padding: 0 0 24px;
     border-bottom: 1px solid rgba(85, 50, 28, 0.3);
-    font: 400 1.08rem/1.6 'Playwrite NZ Guides', cursive;
+    font: 400 1.08rem/1.6 'Playwrite US Trad', cursive;
 }
 
 .c2-journal-list .c2-journal-title {

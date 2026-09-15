@@ -12,6 +12,7 @@ class Campaign2Home {
     this.heroHoverPaused = false;
     this.viewTransitionTimer = null;
     this.activeView = null;
+    this.homeLoadPromise = null;
     this.built = false;
   }
 
@@ -26,7 +27,10 @@ class Campaign2Home {
     }
 
     if (!this.cache.main_characters || !this.cache.journal_recaps) {
-      await this.loadHomeData();
+      this.homeLoadPromise ||= this.loadHomeData().finally(() => {
+        this.homeLoadPromise = null;
+      });
+      await this.homeLoadPromise;
     }
   }
 
@@ -64,7 +68,7 @@ class Campaign2Home {
               <h2 id="c2DispatchHeading">Latest Dispatch</h2>
             </div>
             <div class="c2-dispatch-copy" id="c2LatestDispatch">
-              <p>Consulting the journal…</p>
+              <p>Fetching dispatch…</p>
             </div>
             <button class="c2-ink-link" type="button" data-c2-archive="journal">Open full journal →</button>
           </section>

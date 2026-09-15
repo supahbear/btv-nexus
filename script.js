@@ -82,60 +82,59 @@ class TTRPGHub {
   }
 
   // ========== JSONP Helper ==========
-  jsonp(url, timeoutMs = 25000) {
+  async jsonp(url, timeoutMs = 35000, retries = 1) {
+    let lastError;
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      try {
+        return await this._jsonpOnce(url, timeoutMs);
+      } catch (error) {
+        lastError = error;
+        if (attempt < retries) {
+          Config.warn(`JSONP request failed (attempt ${attempt + 1}/${retries + 1}); retrying:`, error.message);
+          await new Promise(resolve => window.setTimeout(resolve, 450));
+        }
+      }
+    }
+    throw lastError;
+  }
+
+  _jsonpOnce(url, timeoutMs) {
     return new Promise((resolve, reject) => {
       const callbackName = 'jsonp_callback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      
-      // Create global callback function FIRST
-      window[callbackName] = (data) => {
-        // Cleanup
-        try {
-          document.head.removeChild(script);
-        } catch (e) {
-          // Script might already be removed
-        }
+      const script = document.createElement('script');
+      let settled = false;
+      const cleanup = () => {
+        clearTimeout(timeout);
+        script.remove();
         delete window[callbackName];
+      };
+
+      window[callbackName] = (data) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
         resolve(data);
       };
-      
-      const script = document.createElement('script');
-      
-      // Handle script loading errors
+
       script.onerror = () => {
-        try {
-          document.head.removeChild(script);
-        } catch (e) {
-          // Script might already be removed
-        }
-        delete window[callbackName];
+        if (settled) return;
+        settled = true;
+        cleanup();
         reject(new Error('JSONP request failed - script load error'));
       };
-      
-      // Handle timeout — replace with a no-op instead of deleting, so a late-arriving
-      // Apps Script response doesn't throw "ReferenceError: jsonp_callback_... is not defined"
+
       const timeout = setTimeout(() => {
-        try {
-          document.head.removeChild(script);
-        } catch (e) {
-          // Script might already be removed
-        }
+        if (settled) return;
+        settled = true;
+        script.remove();
         window[callbackName] = () => {}; // no-op; cleaned up after a grace period
         setTimeout(() => delete window[callbackName], 60000);
         reject(new Error('JSONP request timed out'));
       }, timeoutMs);
-      
-      // Clear timeout when callback succeeds
-      const originalCallback = window[callbackName];
-      window[callbackName] = (data) => {
-        clearTimeout(timeout);
-        originalCallback(data);
-      };
-      
-      // Add callback + cache-bust parameters to URL
-      // The _t timestamp prevents the browser from serving a cached <script> response
+
+      // The timestamp prevents a cached script response; the callback keeps attempts distinct.
       const separator = url.includes('?') ? '&' : '?';
       script.src = url + separator + 'callback=' + callbackName + '&_t=' + Date.now();
-      
       Config.log('JSONP request:', script.src);
       document.head.appendChild(script);
     });
