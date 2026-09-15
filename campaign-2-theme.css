@@ -530,7 +530,9 @@ body.campaign2-active {
     position: relative;
     z-index: 2;
     display: grid;
-    grid-template-areas: 'meta copy link';
+    grid-template-areas:
+        'meta title link'
+        'meta copy copy';
     grid-template-columns: minmax(170px, 0.45fr) minmax(280px, 1.55fr) auto;
     align-items: center;
     gap: 18px;
@@ -548,13 +550,20 @@ body.campaign2-active {
 
 .c2-dispatch-meta {
     grid-area: meta;
+    align-self: stretch;
+    padding-right: 12px;
+    border-right: 1px solid rgba(88, 51, 28, 0.38);
+}
+
+.c2-dispatch-title {
+    grid-area: title;
+    min-width: 0;
 }
 
 .c2-dispatch-copy {
     grid-area: copy;
     min-width: 0;
-    padding-left: 12px;
-    border-left: 1px solid rgba(88, 51, 28, 0.38);
+    overflow-wrap: anywhere;
     color: #553923;
     font: 400 1.25rem/1.22 'Caveat', cursive;
 }
@@ -570,10 +579,19 @@ body.campaign2-active {
 }
 
 .c2-dispatch-preview {
-    display: -webkit-box;
+    position: relative;
+    max-height: calc(1.22em * 3);
     overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
+}
+
+.c2-dispatch-preview.is-truncated::after {
+    content: '[…]';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    padding-left: 0.3em;
+    color: #553923;
+    background: #e9d09e;
 }
 
 .c2-dispatch-preview p {
@@ -594,6 +612,8 @@ body.campaign2-active {
     display: block;
     margin-top: 3px;
     margin-bottom: 0;
+    color: #3d2a1c;
+    font: 600 1rem/1.2 'Cormorant Garamond', Georgia, serif;
     white-space: nowrap;
 }
 
@@ -786,14 +806,18 @@ body.campaign2-active {
     .c2-record-page { grid-template-columns: minmax(180px, 0.75fr) minmax(220px, 1fr); gap: 24px; }
     .c2-hero-rail { grid-column: 1 / -1; grid-template-columns: repeat(5, 1fr); grid-template-rows: 82px; height: auto; }
     .c2-dispatch {
-        grid-template-areas: 'meta' 'link' 'copy';
+        grid-template-areas: 'meta' 'title' 'link' 'copy';
         grid-template-columns: 1fr;
         gap: 12px;
     }
 
     .c2-dispatch-copy {
-        padding-left: 0;
         border-left: 0;
+    }
+
+    .c2-dispatch-meta {
+        padding-right: 0;
+        border-right: 0;
     }
     .c2-ledger-index { grid-template-columns: repeat(2, 1fr); }
 }

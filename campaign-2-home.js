@@ -68,6 +68,7 @@ class Campaign2Home {
               <h2 id="c2DispatchHeading">Latest Dispatch</h2>
               <span class="c2-dispatch-date" id="c2DispatchDate" hidden></span>
             </div>
+            <div class="c2-dispatch-title" id="c2LatestDispatchTitle"></div>
             <div class="c2-dispatch-copy" id="c2LatestDispatch">
               <p>Fetching dispatch…</p>
             </div>
@@ -247,10 +248,12 @@ class Campaign2Home {
 
   renderLatestDispatch(recaps) {
     const container = this.root.querySelector('#c2LatestDispatch');
+    const titleContainer = this.root.querySelector('#c2LatestDispatchTitle');
     const dispatchDate = this.root.querySelector('#c2DispatchDate');
     const latest = recaps[recaps.length - 1];
     if (!latest) {
       dispatchDate.hidden = true;
+      titleContainer.replaceChildren();
       container.innerHTML = '<p>No dispatch has been entered yet.</p>';
       return;
     }
@@ -258,9 +261,17 @@ class Campaign2Home {
     const date = String(latest.recap_date || '').trim();
     dispatchDate.innerHTML = this.lineMarkup(date);
     dispatchDate.hidden = !date;
-    container.innerHTML = `
-      ${chapter ? `<h3 class="c2-journal-title">${this.lineMarkup(chapter)}</h3>` : ''}
-      <div class="c2-dispatch-preview">${this.textMarkup(latest.entry, 'Entry awaiting transcription.')}</div>`;
+    titleContainer.innerHTML = chapter ? `<h3 class="c2-journal-title">${this.lineMarkup(chapter)}</h3>` : '';
+    container.innerHTML = `<div class="c2-dispatch-preview">${this.textMarkup(latest.entry, 'Entry awaiting transcription.')}</div>`;
+    this.updateDispatchClamp();
+  }
+
+  updateDispatchClamp() {
+    const preview = this.root?.querySelector('.c2-dispatch-preview');
+    if (!preview) return;
+    requestAnimationFrame(() => {
+      preview.classList.toggle('is-truncated', preview.scrollHeight > preview.clientHeight + 1);
+    });
   }
 
   async openArchive(key, writeHash = true) {
