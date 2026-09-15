@@ -263,15 +263,6 @@ class Campaign2Home {
     dispatchDate.hidden = !date;
     titleContainer.innerHTML = chapter ? `<h3 class="c2-journal-title">${this.lineMarkup(chapter)}</h3>` : '';
     container.innerHTML = `<div class="c2-dispatch-preview">${this.textMarkup(latest.entry, 'Entry awaiting transcription.')}</div>`;
-    this.updateDispatchClamp();
-  }
-
-  updateDispatchClamp() {
-    const preview = this.root?.querySelector('.c2-dispatch-preview');
-    if (!preview) return;
-    requestAnimationFrame(() => {
-      preview.classList.toggle('is-truncated', preview.scrollHeight > preview.clientHeight + 1);
-    });
   }
 
   async openArchive(key, writeHash = true) {
