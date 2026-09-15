@@ -1,0 +1,9 @@
+{
+  "name": "btv-nexus",
+  "private": true,
+  "scripts": {
+    "test": "node --test campaign-baseline.test.cjs",
+    "test:baseline": "node --test campaign-baseline.test.cjs",
+    "check": "node --check config.js && node --check campaigns.js && node --check campaign-2-appscript.js && node --check campaign-2-home.js && node --check script.js && node --check article_viewer.js && node --check atlas_viewer.js && node --check quest_viewer.js && node --check tour_viewer.js"
+  }
+}

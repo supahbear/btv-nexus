@@ -16,9 +16,10 @@
     
     <!-- Breach theme (single world) -->
     <link href="breach-theme.css" rel="stylesheet" type="text/css" />
+    <link href="campaign-2-theme.css?v=18" rel="stylesheet" type="text/css" />
 
-    <!-- Handwriting font for margin notes -->
-    <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap" rel="stylesheet" />
+    <!-- Handwriting fonts for journal and margin notes -->
+    <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&family=Kavivanar&family=Playwrite+NZ+Guides:wght@100..400&display=swap" rel="stylesheet" />
 </head>
 <body>
     <!-- Background video layer for world selection -->
@@ -29,19 +30,20 @@
         <video id="bgVideo-breach" class="world-bg-video" muted loop playsinline>
             <source src="assets/videos/Breach-vid.mp4" type="video/mp4">
         </video>
+        <div id="bgStatic-campaign-2" class="world-bg-static world-bg-static--campaign-2"></div>
     </div>
 
     <div class="container">
         <header>
             <div class="logo-container" onclick="window.location.reload()">
-                <img src="assets/breach-logo.png" alt="The Breach" class="logo" />
-                <h1 class="logo-fallback">The Breach</h1>
+                <img src="assets/nexus-logo.png" alt="Nexus" class="logo" />
+                <h1 class="logo-fallback">Nexus</h1>
             </div>
         </header>
 
         <main>
             <section class="landing-screen">
-                <h2>Tales from the Breach</h2>
+                <h2>Choose a Campaign</h2>
                 <div class="worlds-grid" id="worldsGrid">
                     <div class="world-card loading" data-loading="true" data-world-id="breach">
                         <video class="world-video" muted loop playsinline autoplay>
@@ -196,6 +198,9 @@
                 </div><!-- /.hub-main-area -->
 
             </section><!-- /.world-hub -->
+
+            <!-- Campaign 2 owns a separate home and visual language. -->
+            <section class="campaign2-home" id="campaign2Home" style="display: none;" aria-live="polite"></section>
         </main>
     </div>
 
@@ -375,8 +380,10 @@
     </div>
 
     <!-- JavaScript files -->
-    <script src="config.js?v=7"></script>
-    <script src="script.js?v=7"></script>
+    <script src="campaigns.js?v=3"></script>
+    <script src="config.js?v=9"></script>
+    <script src="campaign-2-home.js?v=24"></script>
+    <script src="script.js?v=18"></script>
     <script src="article_viewer.js?v=7"></script>
     <script src="quest_viewer.js?v=7"></script>
     <script src="atlas_viewer.js?v=7"></script>

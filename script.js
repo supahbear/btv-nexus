@@ -6,6 +6,8 @@ class TTRPGHub {
     this.currentSelectedPanel = 'encyclopedia';
     this.worlds = [];
     this._sheetCache = {};        // Demand-loaded sheet data, keyed by sheet name
+    this.campaign2Home = null;
+    this._routeRequestId = 0;
     
     this.activeBackgroundWorld = 'neutral';
     this.backgroundVideos = {};
@@ -31,18 +33,18 @@ class TTRPGHub {
   }
 
   async init() {
-    await this.fetchCurrentDate();
-    await this.loadWorlds();
+    this.loadWorlds();
     this.renderWorlds();
     this._revealWorldCard();
     this._warmCache(['Journal', 'Recaps', 'Calendar']);
     this._initHashRouting();
+    this.fetchCurrentDate();
 
     Config.log('TTRPG Hub initialized');
   }
 
   // ========== Data Loading ==========
-  async loadWorlds() {
+  loadWorlds() {
     this.useFallbackWorlds();
   }
 
@@ -80,7 +82,7 @@ class TTRPGHub {
   }
 
   // ========== JSONP Helper ==========
-  jsonp(url, timeoutMs = 10000) {
+  jsonp(url, timeoutMs = 25000) {
     return new Promise((resolve, reject) => {
       const callbackName = 'jsonp_callback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       
@@ -140,18 +142,14 @@ class TTRPGHub {
   }
 
   useFallbackWorlds() {
-    // Single world - The Breach
-    this.worlds = [
-      {
-        id: 'breach',
-        name: 'Beyond the Vale',
-        description: 'Saving the world is no easy feat. Saving yourself might be a good place to start.',
-        system: 'D&D 5e',
-        video_url: 'assets/videos/breach-loopv2.mp4'
-      }
-    ];
+    this.worlds = Config.listPublishedCampaigns().map(campaign => ({
+      id: campaign.id,
+      name: campaign.name,
+      description: campaign.description,
+      system: campaign.system,
+      video_url: campaign.videoUrl
+    }));
     Config.log('Using fallback worlds:', this.worlds);
-    this.renderWorlds();
   }
 
   // ========== UI Rendering ==========
@@ -167,16 +165,18 @@ class TTRPGHub {
       return;
     }
 
-    // Update the loading card's content instead of replacing it
-    const loadingCard = worldsGrid.querySelector('.world-card.loading');
-    if (loadingCard && this.worlds.length > 0) {
-      const world = this.worlds[0]; // Get first (only) world for Breach
-      
-      // Update text content of the card
-      const worldNameEl = loadingCard.querySelector('.world-name');
-
-      if (worldNameEl) worldNameEl.textContent = world.name;
-    }
+    worldsGrid.innerHTML = this.worlds.map(world => {
+      const media = world.video_url
+        ? `<video class="world-video" muted loop playsinline preload="metadata"><source src="${this._esc(world.video_url)}" type="video/mp4"></video>`
+        : '<div class="world-card-static" aria-hidden="true"><span>II</span></div>';
+      return `
+        <button class="world-card" type="button" data-world-id="${this._esc(world.id)}">
+          ${media}
+          <span class="world-overlay" aria-hidden="true"></span>
+          <span class="world-name">${this._esc(world.name)}</span>
+          <span class="world-description">${this._esc(world.description)}</span>
+        </button>`;
+    }).join('');
     
     this.setupCardListeners();
     this.setupWorldBackgrounds();
@@ -186,8 +186,9 @@ class TTRPGHub {
 
   // ========== World Theme Management ==========
   applyWorldTheme(worldId) {
-    // Remove any existing world theme classes
-    document.body.className = document.body.className.replace(/world-\w+/g, '').trim();
+    [...document.body.classList]
+      .filter(className => className.startsWith('world-'))
+      .forEach(className => document.body.classList.remove(className));
     
     // Add the new world theme class
     if (worldId) {
@@ -198,12 +199,14 @@ class TTRPGHub {
   }
 
   clearWorldTheme() {
-    document.body.className = document.body.className.replace(/world-\w+/g, '').trim();
+    [...document.body.classList]
+      .filter(className => className.startsWith('world-'))
+      .forEach(className => document.body.classList.remove(className));
     Config.log('Cleared world theme');
   }
 
   // ========== Navigation ==========
-  selectWorld(worldId) {
+  async selectWorld(worldId) {
     const alreadyLoaded = this.currentWorld && this.currentWorld.id === worldId;
     this.currentWorld = this.worlds.find(w => w.id === worldId);
     if (this.currentWorld) {
@@ -212,19 +215,21 @@ class TTRPGHub {
       if (!this._suppressHashWrite) this._setHash(worldId);
       // Skip full re-init if returning to an already-loaded world
       if (alreadyLoaded) {
-        this.setPageVisibility('hub');
+        this.setPageVisibility(worldId === 'campaign-2' ? 'campaign2' : 'hub');
       } else {
-        this.showWorldHub();
+        if (worldId === 'campaign-2') await this.showCampaign2Home();
+        else this.showWorldHub();
       }
     }
   }
 
-  showWorldSelection() {
+  showWorldSelection(writeHash = true) {
     this.setPageVisibility('landing');
     // Keep currentWorld so the card re-entry skips re-init
     this.currentMode = 'explore';
     this.clearWorldTheme();
-    this._setHash('');
+    this.campaign2Home?.showHome(false);
+    if (writeHash) this._setHash('nexus');
     // Reset hub back to selection grid for clean re-entry
     this._resetHubToSelection();
   }
@@ -257,6 +262,17 @@ class TTRPGHub {
     this.initModalHandlers();
     this.initializePanels();
     this.activateWorldBackground(this.currentWorld?.id ?? 'breach');
+  }
+
+  async showCampaign2Home() {
+    this.setPageVisibility('campaign2');
+    this.currentMode = 'explore';
+    this.currentSelectedPanel = null;
+    if (!this.campaign2Home) {
+      this.campaign2Home = new Campaign2Home(this, Config.getCampaign('campaign-2'));
+    }
+    await this.campaign2Home.mount();
+    this.activateWorldBackground('campaign-2');
   }
 
   // ========== Global Modal Handlers ==========
@@ -2092,14 +2108,47 @@ class TTRPGHub {
   }
 
   setPageVisibility(activePage) {
-    const landing = document.querySelector('.landing-screen');
-    const hub     = document.getElementById('worldHub');
-    if (landing) landing.style.display = activePage === 'landing' ? 'block' : 'none';
-    // world-hub uses flex layout — must not use 'block'
-    if (hub) hub.style.display = activePage === 'hub' ? 'flex' : 'none';
-    // hub-active class is a :has() fallback for browsers (e.g. older Safari) that
-    // don't reliably support complex :has() selectors
-    document.body.classList.toggle('hub-active', activePage === 'hub');
+    const pages = {
+      landing: document.querySelector('.landing-screen'),
+      hub: document.getElementById('worldHub'),
+      campaign2: document.getElementById('campaign2Home')
+    };
+    const display = { landing: 'block', hub: 'flex', campaign2: 'flex' };
+    const currentPage = this._visiblePage || Object.keys(pages).find(key => pages[key] && getComputedStyle(pages[key]).display !== 'none');
+    const current = pages[currentPage];
+    const target = pages[activePage];
+    const setState = () => {
+      document.body.classList.toggle('hub-active', activePage === 'hub');
+      document.body.classList.toggle('campaign2-active', activePage === 'campaign2');
+      this._visiblePage = activePage;
+    };
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    window.clearTimeout(this._pageTransitionTimer);
+    Object.values(pages).forEach(page => page?.classList.remove('c2-app-view-entering', 'c2-app-view-leaving'));
+
+    if (!target || !current || current === target || reducedMotion) {
+      Object.entries(pages).forEach(([key, page]) => { if (page) page.style.display = key === activePage ? display[key] : 'none'; });
+      setState();
+      return;
+    }
+
+    Object.entries(pages).forEach(([key, page]) => {
+      if (page && key !== currentPage && key !== activePage) page.style.display = 'none';
+    });
+    target.style.display = display[activePage];
+    target.classList.add('c2-app-view-entering');
+    setState();
+    void target.offsetWidth;
+
+    requestAnimationFrame(() => {
+      target.classList.remove('c2-app-view-entering');
+      current.classList.add('c2-app-view-leaving');
+    });
+    this._pageTransitionTimer = window.setTimeout(() => {
+      current.style.display = 'none';
+      current.classList.remove('c2-app-view-leaving');
+    }, 320);
   }
 
   // ========== Panel Management ==========
@@ -2335,16 +2384,10 @@ class TTRPGHub {
 
   // Remove the loading state from the world card and animate it in.
   _revealWorldCard() {
-    const loadingCard = document.querySelector('.world-card.loading');
-    if (!loadingCard) return; // Already revealed or not present
-    // Write real description just before revealing so it's in place when the overlay fades in
-    const world = this.worlds[0];
-    if (world) {
-      const descriptionEl = loadingCard.querySelector('.world-description');
-      if (descriptionEl) descriptionEl.textContent = world.description;
-    }
-    loadingCard.removeAttribute('data-loading');
-    loadingCard.classList.remove('loading');
+    document.querySelectorAll('.world-card.loading').forEach(card => {
+      card.removeAttribute('data-loading');
+      card.classList.remove('loading');
+    });
   }
 
   // Fetches one or more sheet names, serving from per-sheet demand cache on revisit.
@@ -2410,7 +2453,8 @@ class TTRPGHub {
   setupWorldBackgrounds() {
     this.backgroundVideos = {
       neutral: document.getElementById('bgVideo-neutral'),
-      breach: document.getElementById('bgVideo-breach')
+      breach: document.getElementById('bgVideo-breach'),
+      'campaign-2': document.getElementById('bgStatic-campaign-2')
     };
 
     Config.log('Background videos cached:', this.backgroundVideos);
@@ -2466,7 +2510,7 @@ class TTRPGHub {
       const currentVideo = this.backgroundVideos[this.activeBackgroundWorld];
       currentVideo.classList.remove('active');
       currentVideo.style.opacity = '0'; // Force opacity immediately
-      currentVideo.pause();
+      if (typeof currentVideo.pause === 'function') currentVideo.pause();
       Config.log(`Deactivated, opacity set to 0`);
     }
     
@@ -2476,10 +2520,12 @@ class TTRPGHub {
       const newVideo = this.backgroundVideos[worldId];
       newVideo.classList.add('active');
       newVideo.style.opacity = '1'; // Force opacity immediately
-      newVideo.currentTime = 0;
-      newVideo.play()
-        .then(() => Config.log(`${worldId} video playing, opacity at 1`))
-        .catch(e => Config.error(`${worldId} video play blocked:`, e));
+      if (typeof newVideo.play === 'function') {
+        newVideo.currentTime = 0;
+        newVideo.play()
+          .then(() => Config.log(`${worldId} video playing, opacity at 1`))
+          .catch(e => Config.error(`${worldId} video play blocked:`, e));
+      }
     } else {
       Config.error(`No background video found for ${worldId}`);
       Config.error(`Available videos:`, this.backgroundVideos);
@@ -2495,18 +2541,25 @@ class TTRPGHub {
   }
 
   _setHash(hash) {
-    history.replaceState(null, '', hash ? '#' + hash : window.location.pathname + window.location.search);
+    const nextHash = String(hash || '');
+    if (window.location.hash.slice(1) === nextHash) return;
+    window.location.hash = nextHash;
   }
 
   _initHashRouting() {
     this._suppressHashWrite = false;
     window.addEventListener('hashchange', () => this._restoreFromHash());
+    window.addEventListener('popstate', () => this._restoreFromHash());
     this._restoreFromHash();
   }
 
   async _restoreFromHash() {
+    const routeRequestId = ++this._routeRequestId;
     const raw = window.location.hash.slice(1);
-    if (!raw) return;
+    if (!raw || raw === 'nexus') {
+      this.showWorldSelection(false);
+      return;
+    }
 
     const parts = raw.split('/');
     const worldId = parts[0];
@@ -2517,10 +2570,19 @@ class TTRPGHub {
 
     this._suppressHashWrite = true;
     try {
-      this.selectWorld(worldId);
+      await this.selectWorld(worldId);
+      if (routeRequestId !== this._routeRequestId) return;
 
       const section = parts[1];
-      if (!section) return;
+      if (!section) {
+        if (worldId === 'campaign-2') this.campaign2Home?.showHome(false);
+        return;
+      }
+
+      if (worldId === 'campaign-2') {
+        await this.campaign2Home?.openArchive(section, false);
+        return;
+      }
 
       if (section === 'journal') {
         await this.openJournalModal();

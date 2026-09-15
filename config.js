@@ -4,6 +4,9 @@ const Config = {
   // Backend — Google Apps Script web app URL
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbytbnHtZQDlww0St1MzD3HfTttT3BxakNdrIbII7rvnAyHPK-_HdnbdYyYPTjSjAiIfbA/exec',
 
+  // Campaigns own their workbook schema, backend, and presentation contract.
+  CAMPAIGNS: window.NexusCampaigns || {},
+
   // Sheet names in the workbook — source of truth for panel routing
   // Each panel maps 1:1 to a sheet tab in the backend spreadsheet
   SHEETS: {
@@ -68,6 +71,22 @@ const Config = {
     const url = new URL(this.APPS_SCRIPT_URL);
     url.searchParams.set('sheets', Array.isArray(sheets) ? sheets.join(',') : sheets);
     return url.toString();
+  },
+
+  getCampaign(id) {
+    return Object.values(this.CAMPAIGNS).find(campaign => campaign.id === id) || null;
+  },
+
+  getCampaignSheetUrl(campaignId, sheets) {
+    const campaign = this.getCampaign(campaignId);
+    if (!campaign?.apiUrl) throw new Error(`No backend configured for ${campaignId}`);
+    const url = new URL(campaign.apiUrl);
+    url.searchParams.set('sheets', Array.isArray(sheets) ? sheets.join(',') : sheets);
+    return url.toString();
+  },
+
+  listPublishedCampaigns() {
+    return Object.values(this.CAMPAIGNS).filter(campaign => campaign.published);
   },
 
   log(...args) {
