@@ -56,7 +56,7 @@ class Campaign2Home {
           </header>
 
           <section class="c2-hero-stage" id="c2HeroStage" aria-labelledby="c2HeroHeading">
-            <h2 class="c2-section-label" id="c2HeroHeading"><span>Roster</span></h2>
+            <h2 class="c2-section-label" id="c2HeroHeading"><span>Members</span></h2>
             <div class="c2-roster" id="c2Roster">
               ${Array.from({ length: 5 }, (_, index) => `<div class="c2-portrait-skeleton" style="--delay:${index * 70}ms"></div>`).join('')}
             </div>
@@ -64,8 +64,9 @@ class Campaign2Home {
           </section>
 
           <section class="c2-dispatch" aria-labelledby="c2DispatchHeading">
-            <div>
+            <div class="c2-dispatch-meta">
               <h2 id="c2DispatchHeading">Latest Dispatch</h2>
+              <span class="c2-dispatch-date" id="c2DispatchDate" hidden></span>
             </div>
             <div class="c2-dispatch-copy" id="c2LatestDispatch">
               <p>Fetching dispatch…</p>
@@ -83,7 +84,7 @@ class Campaign2Home {
 
         <main class="c2-folio c2-archive-view" id="c2ArchiveView" hidden>
           <header class="c2-archive-heading">
-            <button class="c2-ink-link" type="button" data-c2-action="home">← Company register</button>
+            <button class="c2-ink-link" type="button" data-c2-action="home">← Company Ledger</button>
             <h1 id="c2ArchiveTitle">Archive</h1>
           </header>
           <div id="c2ArchiveContent" class="c2-archive-content"></div>
@@ -138,7 +139,7 @@ class Campaign2Home {
       this.renderLatestDispatch(recaps);
     } catch (error) {
       if (!this.heroes.length) {
-        this.root.querySelector('#c2Roster').innerHTML = '<p class="c2-empty-record">The company register could not be reached.</p>';
+        this.root.querySelector('#c2Roster').innerHTML = '<p class="c2-empty-record">The members list could not be reached.</p>';
       }
       this.root.querySelector('#c2LatestDispatch').innerHTML = '<p>The journal could not be reached.</p>';
       Config.error('Campaign 2 home failed:', error);
@@ -169,7 +170,7 @@ class Campaign2Home {
       <button class="c2-hero-plate" type="button" data-c2-hero="${index}" aria-label="Read ${this.esc(this.displayName(hero.name))}'s entry">
         ${this.portraitMarkup(hero, 'c2-plate-image')}
         <span class="c2-plate-caption">
-          <strong>${this.esc(this.displayName(hero.name))}</strong>
+          <strong>${this.lineMarkup(this.displayName(hero.name))}</strong>
           ${this.heroRole(hero) ? `<small>${this.esc(this.heroRole(hero))}</small>` : ''}
         </span>
       </button>`).join('');
@@ -216,8 +217,7 @@ class Campaign2Home {
       <div class="c2-record-page">
         <div class="c2-record-portrait">${this.portraitMarkup(hero, 'c2-record-image')}</div>
         <div class="c2-record-copy">
-          <span class="c2-entry-kicker">Register entry ${String(index + 1).padStart(2, '0')}</span>
-          <h3>${this.esc(this.displayName(hero.name))}</h3>
+          <h3>${this.lineMarkup(this.displayName(hero.name))}</h3>
           ${this.heroMetaMarkup(hero)}
           <div class="c2-record-bio">${this.textMarkup(hero.summary, 'This entry has not yet been written.')}</div>
         </div>
@@ -225,7 +225,7 @@ class Campaign2Home {
           ${this.heroes.map((member, memberIndex) => `
             <button type="button" data-c2-hero="${memberIndex}" class="${memberIndex === index ? 'active' : ''}" aria-label="Read ${this.esc(this.displayName(member.name))}'s entry">
               ${this.portraitMarkup(member, 'c2-rail-image')}
-              <span>${this.esc(this.displayName(member.name))}</span>
+              <span>${this.lineMarkup(this.displayName(member.name))}</span>
             </button>`).join('')}
         </nav>
       </div>`;
@@ -247,14 +247,20 @@ class Campaign2Home {
 
   renderLatestDispatch(recaps) {
     const container = this.root.querySelector('#c2LatestDispatch');
+    const dispatchDate = this.root.querySelector('#c2DispatchDate');
     const latest = recaps[recaps.length - 1];
     if (!latest) {
+      dispatchDate.hidden = true;
       container.innerHTML = '<p>No dispatch has been entered yet.</p>';
       return;
     }
     const chapter = String(latest.chapter || '').trim();
     const date = String(latest.recap_date || '').trim();
-    container.innerHTML = `${chapter ? `<h3 class="c2-journal-title">${this.esc(chapter)}</h3>` : ''}${date ? `<span class="c2-dispatch-date">${this.esc(date)}</span>` : ''}${this.textMarkup(latest.entry, 'Entry awaiting transcription.')}`;
+    dispatchDate.innerHTML = this.lineMarkup(date);
+    dispatchDate.hidden = !date;
+    container.innerHTML = `
+      ${chapter ? `<h3 class="c2-journal-title">${this.lineMarkup(chapter)}</h3>` : ''}
+      <div class="c2-dispatch-preview">${this.textMarkup(latest.entry, 'Entry awaiting transcription.')}</div>`;
   }
 
   async openArchive(key, writeHash = true) {
@@ -317,8 +323,8 @@ class Campaign2Home {
     if (key === 'journal') {
       content.innerHTML = `<div class="c2-journal-list">${rows.slice().reverse().map(row => `
         <article>
-          ${row.chapter ? `<h2 class="c2-journal-title">${this.esc(row.chapter)}</h2>` : ''}
-          ${row.recap_date ? `<span class="c2-journal-date">${this.esc(row.recap_date)}</span>` : ''}
+          ${row.chapter ? `<h2 class="c2-journal-title">${this.lineMarkup(row.chapter)}</h2>` : ''}
+          ${row.recap_date ? `<span class="c2-journal-date">${this.lineMarkup(row.recap_date)}</span>` : ''}
           ${this.textMarkup(row.entry, 'Entry awaiting transcription.')}
           ${this.recapVoicesMarkup(row)}
         </article>`).join('')}</div>`;
@@ -339,8 +345,8 @@ class Campaign2Home {
       <div class="c2-archive-index">
         ${[...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([group, entries]) => `
           <section>
-            <h2>${this.esc(group)}</h2>
-            <div>${entries.map(({ row, index }) => `<button type="button" data-c2-article="${index}">${this.esc(this.displayName(row.name || row.item || 'Untitled entry'))}</button>`).join('')}</div>
+            <h2>${this.lineMarkup(group)}</h2>
+            <div>${entries.map(({ row, index }) => `<button type="button" data-c2-article="${index}">${this.lineMarkup(this.displayName(row.name || row.item || 'Untitled entry'))}</button>`).join('')}</div>
           </section>`).join('')}
       </div>
       <article class="c2-archive-article" id="c2ArchiveArticle">
@@ -354,10 +360,10 @@ class Campaign2Home {
     if (!row || !article) return;
     const title = row.name || row.item || 'Untitled entry';
     const metaFields = this.campaign.collections?.[row._category]?.modalFields || [];
-    const meta = metaFields.filter(field => row[field]).map(field => `<span><b>${this.esc(field.replace('_', ' '))}</b>${this.esc(row[field])}</span>`).join('');
+    const meta = metaFields.filter(field => row[field]).map(field => `<span><b>${this.esc(field.replace('_', ' '))}</b>${this.lineMarkup(row[field])}</span>`).join('');
     article.innerHTML = `
       <span class="c2-entry-kicker">Filed entry</span>
-      <h2>${this.esc(this.displayName(title))}</h2>
+      <h2>${this.lineMarkup(this.displayName(title))}</h2>
       ${meta ? `<div class="c2-article-meta">${meta}</div>` : ''}
       <div>${this.textMarkup(row.content || row.summary || row.effect, 'This entry has not yet been written.')}</div>`;
     article.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -369,7 +375,7 @@ class Campaign2Home {
     if (!voices.length) return '';
     return `<div class="c2-recap-voices">${voices.map(([field, value]) => `
       <section>
-        <h3>${this.esc(this.displayName(field.replace(/_/g, ' ')))}</h3>
+        <h3>${this.lineMarkup(this.displayName(field.replace(/_/g, ' ')))}</h3>
         ${this.textMarkup(value, '')}
       </section>`).join('')}</div>`;
   }
@@ -418,14 +424,18 @@ class Campaign2Home {
       ['People', hero.species],
       ['Age', hero.age]
     ].filter(([, value]) => value);
-    if (!fields.length) return '<div class="c2-record-meta"><span>Company member</span></div>';
-    return `<div class="c2-record-meta">${fields.map(([label, value]) => `<span><b>${label}</b>${this.esc(value)}</span>`).join('')}</div>`;
+    if (!fields.length) return '';
+    return `<div class="c2-record-meta">${fields.map(([label, value]) => `<span><b>${label}</b>${this.lineMarkup(value)}</span>`).join('')}</div>`;
   }
 
   textMarkup(value, fallback) {
-    const text = String(value || '').trim();
+    const text = String(value ?? '').replace(/\r\n?/g, '\n').trim();
     if (!text) return `<p class="c2-unwritten">${this.esc(fallback)}</p>`;
     return text.split(/\n{2,}/).map(paragraph => `<p>${this.esc(paragraph).replace(/\n/g, '<br>')}</p>`).join('');
+  }
+
+  lineMarkup(value) {
+    return this.esc(String(value ?? '').replace(/\r\n?/g, '\n')).replace(/\n/g, '<br>');
   }
 
   displayName(value) {

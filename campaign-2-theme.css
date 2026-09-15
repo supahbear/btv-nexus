@@ -245,7 +245,7 @@ body.campaign2-active {
 .c2-hero-stage {
     position: relative;
     z-index: 2;
-    min-height: 410px;
+    min-height: 455px;
 }
 
 .c2-section-label {
@@ -296,7 +296,7 @@ body.campaign2-active {
     position: absolute;
     inset: 0;
     display: grid;
-    grid-template-columns: minmax(220px, 0.78fr) minmax(280px, 1.3fr) 112px;
+    grid-template-columns: minmax(220px, 0.78fr) minmax(280px, 1.3fr) 58px;
     gap: clamp(22px, 4vw, 52px);
     pointer-events: none;
 }
@@ -418,7 +418,10 @@ body.campaign2-active {
 }
 
 .c2-record-portrait {
-    height: 350px;
+    width: 100%;
+    max-width: 260px;
+    height: auto;
+    aspect-ratio: 2 / 3;
     overflow: hidden;
     border: 8px solid rgba(246, 228, 190, 0.72);
     outline: 1px solid rgba(65, 39, 23, 0.55);
@@ -490,7 +493,7 @@ body.campaign2-active {
     display: grid;
     grid-template-rows: repeat(5, 1fr);
     gap: 6px;
-    height: 350px;
+    height: 390px;
 }
 
 .c2-hero-rail button {
@@ -527,11 +530,12 @@ body.campaign2-active {
     position: relative;
     z-index: 2;
     display: grid;
-    grid-template-columns: minmax(190px, 0.55fr) minmax(280px, 1.25fr) auto;
+    grid-template-areas: 'meta copy link';
+    grid-template-columns: minmax(170px, 0.45fr) minmax(280px, 1.55fr) auto;
     align-items: center;
-    gap: 32px;
+    gap: 18px;
     margin: 34px 0 28px;
-    padding: 24px 0;
+    padding: 12px 0;
     border-top: 1px solid rgba(88, 51, 28, 0.38);
     border-bottom: 1px solid rgba(88, 51, 28, 0.38);
 }
@@ -542,9 +546,17 @@ body.campaign2-active {
     font-size: 1.7rem;
 }
 
+.c2-dispatch-meta {
+    grid-area: meta;
+}
+
 .c2-dispatch-copy {
+    grid-area: copy;
+    min-width: 0;
+    padding-left: 12px;
+    border-left: 1px solid rgba(88, 51, 28, 0.38);
     color: #553923;
-    font: 400 1rem/1.55 'Playwrite US Trad', cursive;
+    font: 400 1.25rem/1.22 'Caveat', cursive;
 }
 
 .c2-folio .c2-journal-title {
@@ -553,17 +565,41 @@ body.campaign2-active {
     font: 400 clamp(1.55rem, 2.4vw, 2.2rem)/1.08 'Kavivanar', cursive !important;
 }
 
+.c2-dispatch .c2-journal-title {
+    margin-bottom: 0;
+}
+
+.c2-dispatch-preview {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+}
+
+.c2-dispatch-preview p {
+    margin: 0;
+}
+
 .c2-dispatch-date,
 .c2-journal-date {
     display: block;
     margin-bottom: 10px;
     color: #875b36;
-    font: 700 0.82rem/1.35 'Playwrite US Trad', cursive;
-    letter-spacing: 0.02em;
+    font: 400 1rem/1.2 'Kavivanar', cursive;
+    letter-spacing: 0;
     text-transform: none;
 }
 
+.c2-dispatch-date {
+    display: block;
+    margin-top: 3px;
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
 .c2-dispatch .c2-ink-link {
+    grid-area: link;
+    align-self: start;
     color: #713126;
 }
 
@@ -577,7 +613,8 @@ body.campaign2-active {
 
 .c2-ledger-index button {
     display: grid;
-    grid-template-rows: 1fr auto;
+    grid-template-rows: auto 3.54em;
+    align-content: end;
     min-height: 116px;
     padding: 16px;
     cursor: pointer;
@@ -596,7 +633,6 @@ body.campaign2-active {
 }
 
 .c2-ledger-index strong {
-    align-self: end;
     margin-bottom: 7px;
     font: 600 0.95rem/1.1 'Cinzel', serif;
     letter-spacing: 0.05em;
@@ -604,6 +640,7 @@ body.campaign2-active {
 }
 
 .c2-ledger-index small {
+    overflow: hidden;
     color: #79573c;
     font: 500 0.98rem/1.18 'Cormorant Garamond', Georgia, serif;
 }
@@ -650,7 +687,7 @@ body.campaign2-active {
 }
 
 .c2-archive-loading {
-    font-family: 'Playwrite US Trad', cursive;
+    font-family: 'Caveat', cursive;
 }
 
 .c2-archive-index section + section {
@@ -712,7 +749,7 @@ body.campaign2-active {
 .c2-journal-list article {
     padding: 0 0 24px;
     border-bottom: 1px solid rgba(85, 50, 28, 0.3);
-    font: 400 1.08rem/1.6 'Playwrite US Trad', cursive;
+    font: 400 1.25rem/1.42 'Caveat', cursive;
 }
 
 .c2-journal-list .c2-journal-title {
@@ -748,7 +785,16 @@ body.campaign2-active {
     .c2-hero-plate, .c2-portrait-skeleton { height: 285px; }
     .c2-record-page { grid-template-columns: minmax(180px, 0.75fr) minmax(220px, 1fr); gap: 24px; }
     .c2-hero-rail { grid-column: 1 / -1; grid-template-columns: repeat(5, 1fr); grid-template-rows: 82px; height: auto; }
-    .c2-dispatch { grid-template-columns: 1fr; gap: 12px; }
+    .c2-dispatch {
+        grid-template-areas: 'meta' 'link' 'copy';
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .c2-dispatch-copy {
+        padding-left: 0;
+        border-left: 0;
+    }
     .c2-ledger-index { grid-template-columns: repeat(2, 1fr); }
 }
 
@@ -765,7 +811,7 @@ body.campaign2-active {
     .c2-hero-stage { min-height: 805px; }
     .c2-roster { grid-template-columns: repeat(5, 132px); }
     .c2-record-page { grid-template-columns: 1fr; gap: 18px; }
-    .c2-record-portrait { width: min(230px, 75%); height: 280px; margin: 0 auto; }
+    .c2-record-portrait { width: min(230px, 75%); height: auto; margin: 0 auto; }
     .c2-record-copy { max-height: 290px; }
     .c2-record-copy h3 { font-size: 2.7rem; }
     .c2-hero-rail { grid-template-rows: 67px; }
