@@ -349,10 +349,6 @@ body.campaign2-active {
     transition: transform 220ms ease, box-shadow 220ms ease;
 }
 
-.c2-hero-plate:nth-child(even) {
-    transform: translateY(7px);
-}
-
 .c2-hero-plate:hover,
 .c2-hero-plate:focus-visible {
     z-index: 2;
