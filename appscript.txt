@@ -12,8 +12,7 @@
 
 const SHEET_ID = '11dLpf_wqHdRZu1EpvD3CMiGQKuj1aCQf47R9pyscUb4';
 
-// Discord webhook — posts to your channel when Recaps, Journal entries, or Articles are created
-const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1503471265078313041/tTFAowBOIp4203SN86YOWus-fXIjqGk3IjcXmi3dpD3EKFHIg-W5W3CdARW-ZqKNzCWZ';
+// Set DISCORD_WEBHOOK_URL in the Apps Script project's Script properties.
 
 // Base URL for deep-link hashes posted to Discord
 const NEXUS_BASE_URL = 'https://btvnexus.netlify.app/';
@@ -499,6 +498,12 @@ function buildArticleEmbed(sheetName, rowData) {
 // Dispatches to the correct embed builder and sends the webhook
 function notifyDiscord(sheetName, rowData) {
   try {
+    const webhookUrl = PropertiesService.getScriptProperties().getProperty('DISCORD_WEBHOOK_URL');
+    if (!webhookUrl) {
+      console.warn('notifyDiscord: DISCORD_WEBHOOK_URL is not configured in Script properties');
+      return;
+    }
+
     let embed;
 
     if (sheetName === 'Recaps') {
@@ -514,7 +519,7 @@ function notifyDiscord(sheetName, rowData) {
     }
 
     const body = JSON.stringify({ embeds: [embed] });
-    const response = UrlFetchApp.fetch(DISCORD_WEBHOOK_URL, {
+    const response = UrlFetchApp.fetch(webhookUrl, {
       method:      'post',
       contentType: 'application/json',
       payload:     body,
@@ -543,4 +548,3 @@ function jsonp(callbackName, data) {
     .createTextOutput(payload)
     .setMimeType(ContentService.MimeType.JAVASCRIPT);
 }
-
