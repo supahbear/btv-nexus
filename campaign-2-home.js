@@ -4,7 +4,7 @@ class Campaign2Home {
     this.campaign = campaign;
     this.root = document.getElementById('campaign2Home');
     this.cache = {};
-    this.heroes = (campaign?.fallbackHeroes || []).map(name => ({ name, _category: 'main_characters' }));
+    this.heroes = [];
     this.activeHeroIndex = -1;
     this.heroLocked = false;
     this.heroSwapTimer = null;
@@ -21,7 +21,6 @@ class Campaign2Home {
     if (!this.built) {
       this.root.innerHTML = this.shellMarkup();
       this.bindShell();
-      this.renderRoster();
       this.activeView = this.root.querySelector('#c2HomeView');
       this.built = true;
     }

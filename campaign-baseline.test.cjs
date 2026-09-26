@@ -10,7 +10,6 @@ const campaigns = require('./campaigns.js');
 test('Campaign 2 is published with its own backend', () => {
   assert.equal(campaigns.campaign2.published, true);
   assert.match(campaigns.campaign2.apiUrl, /^https:\/\/script\.google\.com\/macros\/s\//);
-  assert.deepEqual(campaigns.campaign2.fallbackHeroes, ['Hildur', 'Kevin', 'Erik', 'Katrin', 'Rohana']);
 });
 
 test('the application registry exposes both campaigns in the selector', () => {

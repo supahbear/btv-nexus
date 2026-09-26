@@ -20,7 +20,6 @@
       system: 'D&D 5e',
       published: true,
       apiUrl: 'https://script.google.com/macros/s/AKfycbxBxNmyfa_5TWbCp3jwP0p0bje3and5-sI9hRJig3DRqgw1A-xu5lrqAhagVUO9j893IA/exec',
-      fallbackHeroes: ['Hildur', 'Kevin', 'Erik', 'Katrin', 'Rohana'],
       journalCharacters: ['Bamsi Bombus', 'Chickard Bishop', 'Zhade', 'Horse'],
       sheets: {
         journalEntries: 'journal_entries',
