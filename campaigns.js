@@ -20,7 +20,7 @@
       system: 'D&D 5e',
       published: true,
       apiUrl: 'https://script.google.com/macros/s/AKfycbxBxNmyfa_5TWbCp3jwP0p0bje3and5-sI9hRJig3DRqgw1A-xu5lrqAhagVUO9j893IA/exec',
-      journalCharacters: ['Bamsi Bombus', 'Chickard Bishop', 'Zhade', 'Horse'],
+      journalCharacters: ['Bamsi Bombus', 'Chickard Bishop', 'Zhade', 'Hrim'],
       sheets: {
         journalEntries: 'journal_entries',
         journalComments: 'journal_comments',

@@ -11,7 +11,7 @@
  */
 
 const CAMPAIGN_2_SHEETS = {
-  journal_entries: ['recap_date', 'chapter', 'entry', 'Bamsi Bombus', 'Chickard Bishop', 'Zhade', 'Horse'],
+  journal_entries: ['recap_date', 'chapter', 'entry', 'Bamsi Bombus', 'Chickard Bishop', 'Zhade', 'Hrim'],
   journal_comments: ['id', 'timestamp', 'chapter_title', 'character', 'text', 'author'],
   main_characters: ['name', 'image_url', 'summary', 'species', 'class', 'age', 'image_offset'],
   people: ['name', 'image_url', 'content', 'species', 'faction', 'image_offset'],
