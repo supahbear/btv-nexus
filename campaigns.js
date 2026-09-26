@@ -42,7 +42,8 @@
           modalFields: ['species', 'class', 'age']
         },
         people: {
-          presentation: 'alphabetical',
+          presentation: 'category',
+          groupField: 'faction',
           modalFields: ['species', 'faction']
         },
         factions: {
