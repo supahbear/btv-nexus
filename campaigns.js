@@ -21,9 +21,10 @@
       published: true,
       apiUrl: 'https://script.google.com/macros/s/AKfycbxBxNmyfa_5TWbCp3jwP0p0bje3and5-sI9hRJig3DRqgw1A-xu5lrqAhagVUO9j893IA/exec',
       fallbackHeroes: ['Hildur', 'Kevin', 'Erik', 'Katrin', 'Rohana'],
+      journalCharacters: ['Bamsi Bombus', 'Chickard Bishop', 'Zhade', 'Horse'],
       sheets: {
-        journalRecaps: 'journal_recaps',
         journalEntries: 'journal_entries',
+        journalComments: 'journal_comments',
         mainCharacters: 'main_characters',
         people: 'people',
         places: 'places',
@@ -32,6 +33,7 @@
         items: 'items',
         bestiary: 'bestiary',
         worldInfo: 'world_info',
+        deities: 'deities',
         maps: 'maps',
         gallery: 'gallery'
       },
@@ -52,6 +54,11 @@
           presentation: 'category',
           groupField: 'category',
           modalFields: ['type']
+        },
+        deities: {
+          presentation: 'category',
+          groupField: 'category',
+          modalFields: ['domain', 'symbol']
         },
         items: {
           presentation: 'category',

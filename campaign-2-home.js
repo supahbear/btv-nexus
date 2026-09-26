@@ -26,7 +26,7 @@ class Campaign2Home {
       this.built = true;
     }
 
-    if (!this.cache.main_characters || !this.cache.journal_recaps) {
+    if (!this.cache.main_characters || !this.cache.journal_entries) {
       this.homeLoadPromise ||= this.loadHomeData().finally(() => {
         this.homeLoadPromise = null;
       });
@@ -79,7 +79,8 @@ class Campaign2Home {
             <button type="button" data-c2-archive="people"><strong>People</strong><small>Those who travel with the company, cross its path, or stand against it.</small></button>
             <button type="button" data-c2-archive="places"><strong>Places</strong><small>Regions, settlements, and sites that have entered the company record.</small></button>
             <button type="button" data-c2-archive="items"><strong>Items</strong><small>Equipment and recovered objects kept in the company’s charge.</small></button>
-            <button type="button" data-c2-archive="world_info"><strong>World Info</strong><small>Intel gathered from across the world.</small></button>
+            <button type="button" data-c2-archive="world_info"><strong>World Info</strong><small>Intel gathered from across the world on current affairs and phenomena.</small></button>
+            <button type="button" data-c2-archive="deities"><strong>Deities</strong><small>Divine powers and figures of worship known to the company.</small></button>
           </nav>
         </main>
 
@@ -91,6 +92,16 @@ class Campaign2Home {
           <div id="c2ArchiveContent" class="c2-archive-content"></div>
         </main>
         </div>
+
+        <div class="c2-article-overlay" id="c2ArticleOverlay" hidden>
+          <article class="c2-article-modal" id="c2ArticleModal" role="dialog" aria-modal="true" aria-labelledby="c2ArticleModalTitle" tabindex="-1">
+            <header class="c2-article-modal-header">
+              <span class="c2-entry-kicker">Company record</span>
+              <button class="c2-article-modal-close" type="button" data-c2-action="close-article" aria-label="Close article">×</button>
+            </header>
+            <div class="c2-article-modal-body" id="c2ArticleModalBody"></div>
+          </article>
+        </div>
       </div>`;
   }
 
@@ -99,6 +110,11 @@ class Campaign2Home {
       const action = event.target.closest('[data-c2-action]')?.dataset.c2Action;
       if (action === 'nexus') this.hub.showWorldSelection();
       if (action === 'home') this.showHome();
+      if (action === 'close-article') this.closeArticleModal();
+      if (action === 'new-chapter') this.toggleJournalForm('c2NewChapterForm');
+      if (action === 'cancel-chapter') this.toggleJournalForm('c2NewChapterForm', false);
+      if (action === 'edit-entry') this.toggleJournalForm(event.target.closest('.c2-journal-voice')?.querySelector('form'));
+      if (action === 'cancel-entry') this.toggleJournalForm(event.target.closest('form'), false);
 
       const archive = event.target.closest('[data-c2-archive]')?.dataset.c2Archive;
       if (archive) this.openArchive(archive);
@@ -109,7 +125,16 @@ class Campaign2Home {
       if (event.target.closest('[data-c2-close-hero]')) this.closeHero({ pauseHover: true });
 
       const articleButton = event.target.closest('[data-c2-article]');
-      if (articleButton) this.showArticle(Number(articleButton.dataset.c2Article));
+      if (articleButton) this.showArticle(Number(articleButton.dataset.c2Article), articleButton);
+
+      if (event.target === this.root.querySelector('#c2ArticleOverlay')) this.closeArticleModal();
+    });
+
+    this.root.addEventListener('submit', event => {
+      const form = event.target.closest('[data-c2-journal-form]');
+      if (!form) return;
+      event.preventDefault();
+      this.saveJournalForm(form);
     });
 
     const stage = this.root.querySelector('#c2HeroStage');
@@ -127,15 +152,17 @@ class Campaign2Home {
     });
 
     document.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && this.root.style.display !== 'none') this.closeHero({ pauseHover: true });
+      if (event.key !== 'Escape' || this.root.style.display === 'none') return;
+      if (!this.root.querySelector('#c2ArticleOverlay')?.hidden) this.closeArticleModal();
+      else this.closeHero({ pauseHover: true });
     });
   }
 
   async loadHomeData() {
     try {
-      const rows = await this.loadSheets(['main_characters', 'journal_recaps']);
+      const rows = await this.loadSheets(['main_characters', 'journal_entries']);
       this.heroes = rows.filter(row => row._category === 'main_characters');
-      const recaps = rows.filter(row => row._category === 'journal_recaps');
+      const recaps = rows.filter(row => row._category === 'journal_entries');
       this.renderRoster();
       this.renderLatestDispatch(recaps);
     } catch (error) {
@@ -276,7 +303,7 @@ class Campaign2Home {
     if (writeHash) this.hub._setHash(`${this.campaign.id}/${key}`);
 
     try {
-      const rows = await this.loadSheets([sheet]);
+      const rows = await this.loadSheets(key === 'journal' ? [sheet, this.campaign.sheets.journalComments] : [sheet]);
       this.renderArchive(key, rows.filter(row => row._category === sheet));
     } catch (error) {
       content.innerHTML = `<p class="c2-empty-record">${this.esc(error.message)}</p>`;
@@ -317,19 +344,50 @@ class Campaign2Home {
   renderArchive(key, rows) {
     const content = this.root.querySelector('#c2ArchiveContent');
     this.currentArchiveRows = rows;
-    if (!rows.length) {
+    if (!rows.length && key !== 'journal') {
       content.innerHTML = '<p class="c2-empty-record">No entries have been filed in this section.</p>';
       return;
     }
 
     if (key === 'journal') {
-      content.innerHTML = `<div class="c2-journal-list">${rows.slice().reverse().map(row => `
-        <article>
+      const comments = this.cache[this.campaign.sheets.journalComments] || [];
+      const characters = this.campaign.journalCharacters || [];
+      content.innerHTML = `<div class="c2-journal-tools">
+        <button type="button" class="c2-journal-button" data-c2-action="new-chapter">+ New chapter</button>
+        <form id="c2NewChapterForm" data-c2-journal-form="chapter" hidden>
+          <label>Chapter title<input name="chapter" required maxlength="120"></label>
+          <label>Date or dispatch heading<input name="recap_date" maxlength="300"></label>
+          <label>Chapter summary<textarea name="entry" rows="5"></textarea></label>
+          <div class="c2-journal-form-actions"><button type="submit">Create chapter</button><button type="button" data-c2-action="cancel-chapter">Cancel</button></div>
+          <span class="c2-journal-status" role="status"></span>
+        </form>
+      </div><div class="c2-journal-list">${rows.length ? rows.slice().reverse().map((row, reverseIndex) => `
+        <article data-c2-journal-index="${rows.length - reverseIndex - 1}">
           ${row.chapter ? `<h2 class="c2-journal-title">${this.lineMarkup(row.chapter)}</h2>` : ''}
           ${row.recap_date ? `<span class="c2-journal-date">${this.lineMarkup(row.recap_date)}</span>` : ''}
           ${this.textMarkup(row.entry, 'Entry awaiting transcription.')}
-          ${this.recapVoicesMarkup(row)}
-        </article>`).join('')}</div>`;
+          <div class="c2-recap-voices">${characters.map(character => {
+            const related = comments.filter(comment => String(comment.chapter_title || '').trim() === String(row.chapter || '').trim() &&
+              String(comment.character || '').trim().toLowerCase() === character.toLowerCase());
+            return `<section class="c2-journal-voice">
+              <h3>${this.lineMarkup(character)}</h3>
+              ${this.textMarkup(row[character.toLowerCase()], 'No entry yet.')}
+              <button type="button" class="c2-ink-link" data-c2-action="edit-entry">${row[character.toLowerCase()] ? 'Edit entry' : 'Write entry'}</button>
+              <form data-c2-journal-form="entry" data-character="${this.esc(character)}" hidden>
+                <label>Journal entry<textarea name="text" rows="6" required>${this.esc(row[character.toLowerCase()] || '')}</textarea></label>
+                <div class="c2-journal-form-actions"><button type="submit">Save entry</button><button type="button" data-c2-action="cancel-entry">Cancel</button></div>
+                <span class="c2-journal-status" role="status"></span>
+              </form>
+              <div class="c2-journal-comments">${related.map(comment => `<div>${this.textMarkup(comment.text, '')}<small>— ${this.lineMarkup(comment.author || 'Anonymous')}</small></div>`).join('')}</div>
+              <form data-c2-journal-form="comment" data-character="${this.esc(character)}">
+                <label>Leave a comment<textarea name="text" rows="2" required></textarea></label>
+                <label>Your name<input name="author" required maxlength="150"></label>
+                <div class="c2-journal-form-actions"><button type="submit">Add comment</button></div>
+                <span class="c2-journal-status" role="status"></span>
+              </form>
+            </section>`;
+          }).join('')}</div>
+        </article>`).join('') : '<p class="c2-empty-record">No chapters yet.</p>'}</div>`;
       return;
     }
 
@@ -344,31 +402,82 @@ class Campaign2Home {
     });
 
     content.innerHTML = `
-      <div class="c2-archive-index">
+      <div class="c2-catalogue">
         ${[...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([group, entries]) => `
-          <section>
+          <section class="c2-catalogue-group">
             <h2>${this.lineMarkup(group)}</h2>
-            <div>${entries.map(({ row, index }) => `<button type="button" data-c2-article="${index}">${this.lineMarkup(this.displayName(row.name || row.item || 'Untitled entry'))}</button>`).join('')}</div>
+            <div class="c2-catalogue-grid">${entries
+              .sort(({ row: a }, { row: b }) => this.displayName(a.name || a.item || '').localeCompare(this.displayName(b.name || b.item || '')))
+              .map(({ row, index }) => this.catalogueCardMarkup(row, index)).join('')}</div>
           </section>`).join('')}
-      </div>
-      <article class="c2-archive-article" id="c2ArchiveArticle">
-        <p>Select an entry from the ledger.</p>
-      </article>`;
+      </div>`;
   }
 
-  showArticle(index) {
+  showArticle(index, trigger) {
     const row = this.currentArchiveRows?.[index];
-    const article = this.root.querySelector('#c2ArchiveArticle');
-    if (!row || !article) return;
+    const overlay = this.root.querySelector('#c2ArticleOverlay');
+    const body = this.root.querySelector('#c2ArticleModalBody');
+    const modal = this.root.querySelector('#c2ArticleModal');
+    if (!row || !overlay || !body || !modal) return;
     const title = row.name || row.item || 'Untitled entry';
     const metaFields = this.campaign.collections?.[row._category]?.modalFields || [];
     const meta = metaFields.filter(field => row[field]).map(field => `<span><b>${this.esc(field.replace('_', ' '))}</b>${this.lineMarkup(row[field])}</span>`).join('');
-    article.innerHTML = `
-      <span class="c2-entry-kicker">Filed entry</span>
-      <h2>${this.lineMarkup(this.displayName(title))}</h2>
-      ${meta ? `<div class="c2-article-meta">${meta}</div>` : ''}
-      <div>${this.textMarkup(row.content || row.summary || row.effect, 'This entry has not yet been written.')}</div>`;
-    article.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const image = this.articleImageMarkup(row);
+    body.innerHTML = `
+      ${image ? `<div class="c2-article-modal-image">${image}</div>` : ''}
+      <div class="c2-article-modal-copy">
+        <h2 id="c2ArticleModalTitle">${this.lineMarkup(this.displayName(title))}</h2>
+        ${meta ? `<div class="c2-article-meta">${meta}</div>` : ''}
+        <div>${this.textMarkup(row.content || row.summary || row.effect, 'This entry has not yet been written.')}</div>
+      </div>`;
+    this.lastArticleTrigger = trigger || document.activeElement;
+    overlay.hidden = false;
+    requestAnimationFrame(() => modal.focus());
+  }
+
+  closeArticleModal() {
+    const overlay = this.root.querySelector('#c2ArticleOverlay');
+    if (!overlay || overlay.hidden) return;
+    overlay.hidden = true;
+    this.lastArticleTrigger?.focus?.();
+    this.lastArticleTrigger = null;
+  }
+
+  toggleJournalForm(target, show) {
+    const form = typeof target === 'string' ? this.root.querySelector(`#${target}`) : target;
+    if (!form) return;
+    form.hidden = show === undefined ? !form.hidden : !show;
+    if (!form.hidden) form.querySelector('input, textarea')?.focus();
+  }
+
+  async saveJournalForm(form) {
+    const type = form.dataset.c2JournalForm;
+    const article = form.closest('[data-c2-journal-index]');
+    const row = article ? this.currentArchiveRows?.[Number(article.dataset.c2JournalIndex)] : null;
+    const values = new FormData(form);
+    const payload = type === 'chapter'
+      ? { chapter: values.get('chapter'), recap_date: values.get('recap_date'), entry: values.get('entry') }
+      : { chapter: row?.chapter, character: form.dataset.character, text: values.get('text'), author: values.get('author') };
+    const action = { chapter: 'journal_create', entry: 'journal_entry', comment: 'journal_comment' }[type];
+    const status = form.querySelector('.c2-journal-status');
+    const button = form.querySelector('[type="submit"]');
+    if (!action || !status || !button || (type !== 'chapter' && !row)) return;
+    button.disabled = true;
+    status.textContent = 'Saving…';
+    try {
+      const url = new URL(this.campaign.apiUrl);
+      url.searchParams.set('action', action);
+      url.searchParams.set('payload', JSON.stringify(payload));
+      const result = await this.hub.jsonp(url.toString(), 30000);
+      if (!result.success) throw new Error(result.error || 'Save failed');
+      delete this.cache[this.campaign.sheets.journalEntries];
+      delete this.cache[this.campaign.sheets.journalComments];
+      await this.openArchive('journal', false);
+      this.renderLatestDispatch(this.cache[this.campaign.sheets.journalEntries] || []);
+    } catch (error) {
+      status.textContent = error.message || 'Save failed. Try again.';
+      button.disabled = false;
+    }
   }
 
   recapVoicesMarkup(row) {
@@ -384,12 +493,13 @@ class Campaign2Home {
 
   archiveSheet(key) {
     const map = {
-      journal: this.campaign.sheets.journalRecaps,
+      journal: this.campaign.sheets.journalEntries,
       inventory: this.campaign.sheets.inventory,
       people: this.campaign.sheets.people,
       places: this.campaign.sheets.places,
       items: this.campaign.sheets.items,
-      world_info: this.campaign.sheets.worldInfo
+      world_info: this.campaign.sheets.worldInfo,
+      deities: this.campaign.sheets.deities
     };
     return map[key] || null;
   }
@@ -401,8 +511,29 @@ class Campaign2Home {
       people: 'People',
       places: 'Places',
       items: 'Items',
-      world_info: 'World Information'
+      world_info: 'World Information',
+      deities: 'Deities'
     })[key] || 'Archive';
+  }
+
+  catalogueCardMarkup(row, index) {
+    const title = this.displayName(row.name || row.item || 'Untitled entry');
+    const imageUrl = this.safeImageUrl(row.image_url);
+    const offset = Math.max(0, Math.min(100, Number.parseFloat(row.image_offset) || 50));
+    const artwork = imageUrl
+      ? `<img src="${this.esc(imageUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" style="object-position:center ${offset}%">`
+      : '<span class="c2-catalogue-empty" aria-hidden="true">✦</span>';
+    return `<button class="c2-catalogue-card" type="button" data-c2-article="${index}" aria-label="Read ${this.esc(title)}">
+      <span class="c2-catalogue-art">${artwork}</span>
+      <span class="c2-catalogue-label">${this.lineMarkup(title)}</span>
+    </button>`;
+  }
+
+  articleImageMarkup(row) {
+    const imageUrl = this.safeImageUrl(row.image_url);
+    if (!imageUrl) return '';
+    const offset = Math.max(0, Math.min(100, Number.parseFloat(row.image_offset) || 50));
+    return `<img class="c2-article-image" src="${this.esc(imageUrl)}" alt="${this.esc(this.displayName(row.name || row.item || ''))}" loading="lazy" referrerpolicy="no-referrer" style="object-position:center ${offset}%">`;
   }
 
   portraitMarkup(hero, className) {
@@ -410,7 +541,7 @@ class Campaign2Home {
     const imageUrl = this.safeImageUrl(hero.image_url);
     const offset = Math.max(0, Math.min(100, Number.parseFloat(hero.image_offset) || 50));
     if (imageUrl) {
-      return `<img class="${className}" src="${this.esc(imageUrl)}" alt="${this.esc(name)}" style="object-position:center ${offset}%">`;
+      return `<img class="${className}" src="${this.esc(imageUrl)}" alt="${this.esc(name)}" referrerpolicy="no-referrer" style="object-position:center ${offset}%">`;
     }
     const initials = name.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase();
     return `<span class="${className} c2-portrait-empty" aria-hidden="true">${this.esc(initials || '—')}</span>`;

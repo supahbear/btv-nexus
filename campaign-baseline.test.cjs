@@ -25,7 +25,7 @@ test('the application registry exposes both campaigns in the selector', () => {
 });
 
 test('Campaign 2 category collections all group by category', () => {
-  for (const collection of ['world_info', 'items', 'bestiary', 'places']) {
+  for (const collection of ['world_info', 'items', 'bestiary', 'places', 'deities']) {
     assert.equal(campaigns.campaign2.collections[collection].presentation, 'category');
     assert.equal(campaigns.campaign2.collections[collection].groupField, 'category');
   }
@@ -33,6 +33,12 @@ test('Campaign 2 category collections all group by category', () => {
 
 test('Places retains region as modal metadata, not its grouping field', () => {
   assert.deepEqual(campaigns.campaign2.collections.places.modalFields, ['type', 'region']);
+});
+
+test('Deities uses the dedicated sheet and its divine metadata', () => {
+  assert.equal(campaigns.campaign2.sheets.deities, 'deities');
+  assert.deepEqual(campaigns.campaign2.collections.deities.modalFields, ['domain', 'symbol']);
+  assert.match(fs.readFileSync(path.join(__dirname, 'campaign-2-appscript.js'), 'utf8'), /deities:\s*\[/);
 });
 
 test('Campaign 2 Apps Script source parses', () => {
