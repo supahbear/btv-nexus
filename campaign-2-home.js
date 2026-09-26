@@ -4,6 +4,7 @@ class Campaign2Home {
     this.campaign = campaign;
     this.root = document.getElementById('campaign2Home');
     this.cache = {};
+    this.journalTabs = new Map();
     this.heroes = [];
     this.activeHeroIndex = -1;
     this.heroLocked = false;
@@ -114,6 +115,7 @@ class Campaign2Home {
       if (action === 'cancel-chapter') this.toggleJournalForm('c2NewChapterForm', false);
       if (action === 'edit-entry') this.toggleJournalForm(event.target.closest('.c2-journal-voice')?.querySelector('form'));
       if (action === 'cancel-entry') this.toggleJournalForm(event.target.closest('form'), false);
+      if (action === 'journal-tab') this.selectJournalTab(event.target.closest('[data-c2-action="journal-tab"]'));
 
       const archive = event.target.closest('[data-c2-archive]')?.dataset.c2Archive;
       if (archive) this.openArchive(archive);
@@ -127,6 +129,18 @@ class Campaign2Home {
       if (articleButton) this.showArticle(Number(articleButton.dataset.c2Article), articleButton);
 
       if (event.target === this.root.querySelector('#c2ArticleOverlay')) this.closeArticleModal();
+    });
+
+    this.root.addEventListener('keydown', event => {
+      const tab = event.target.closest('[data-c2-action="journal-tab"]');
+      if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      const tabs = [...tab.closest('[role="tablist"]').querySelectorAll('[role="tab"]')];
+      const index = tabs.indexOf(tab);
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
+        : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+      event.preventDefault();
+      this.selectJournalTab(tabs[next]);
+      tabs[next].focus();
     });
 
     this.root.addEventListener('submit', event => {
@@ -365,27 +379,7 @@ class Campaign2Home {
           ${row.chapter ? `<h2 class="c2-journal-title">${this.lineMarkup(row.chapter)}</h2>` : ''}
           ${row.recap_date ? `<span class="c2-journal-date">${this.lineMarkup(row.recap_date)}</span>` : ''}
           ${this.textMarkup(row.entry, 'Entry awaiting transcription.')}
-          <div class="c2-recap-voices">${characters.map(character => {
-            const related = comments.filter(comment => String(comment.chapter_title || '').trim() === String(row.chapter || '').trim() &&
-              String(comment.character || '').trim().toLowerCase() === character.toLowerCase());
-            return `<section class="c2-journal-voice">
-              <h3>${this.lineMarkup(character)}</h3>
-              ${this.textMarkup(row[character.toLowerCase()], 'No entry yet.')}
-              <button type="button" class="c2-ink-link" data-c2-action="edit-entry">${row[character.toLowerCase()] ? 'Edit entry' : 'Write entry'}</button>
-              <form data-c2-journal-form="entry" data-character="${this.esc(character)}" hidden>
-                <label>Journal entry<textarea name="text" rows="6" required>${this.esc(row[character.toLowerCase()] || '')}</textarea></label>
-                <div class="c2-journal-form-actions"><button type="submit">Save entry</button><button type="button" data-c2-action="cancel-entry">Cancel</button></div>
-                <span class="c2-journal-status" role="status"></span>
-              </form>
-              <div class="c2-journal-comments">${related.map(comment => `<div>${this.textMarkup(comment.text, '')}<small>— ${this.lineMarkup(comment.author || 'Anonymous')}</small></div>`).join('')}</div>
-              <form data-c2-journal-form="comment" data-character="${this.esc(character)}">
-                <label>Leave a comment<textarea name="text" rows="2" required></textarea></label>
-                <label>Your name<input name="author" required maxlength="150"></label>
-                <div class="c2-journal-form-actions"><button type="submit">Add comment</button></div>
-                <span class="c2-journal-status" role="status"></span>
-              </form>
-            </section>`;
-          }).join('')}</div>
+          ${this.journalVoicesMarkup(row, rows.length - reverseIndex - 1, characters, comments)}
         </article>`).join('') : '<p class="c2-empty-record">No chapters yet.</p>'}</div>`;
       return;
     }
@@ -440,6 +434,57 @@ class Campaign2Home {
     overlay.hidden = true;
     this.lastArticleTrigger?.focus?.();
     this.lastArticleTrigger = null;
+  }
+
+  journalVoicesMarkup(row, rowIndex, characters, comments) {
+    if (!characters.length) return '';
+    const selected = this.journalTabs.get(String(row.chapter || ''));
+    const activeIndex = Math.max(0, characters.indexOf(selected));
+    const id = index => `c2-journal-${rowIndex}-character-${index}`;
+    return `<div class="c2-journal-characters">
+      <div class="c2-journal-tabs" role="tablist" aria-label="Character entries">
+        ${characters.map((character, index) => `<button type="button" role="tab" id="${id(index)}-tab"
+          aria-controls="${id(index)}" aria-selected="${index === activeIndex}" tabindex="${index === activeIndex ? 0 : -1}"
+          data-c2-action="journal-tab" data-character="${this.esc(character)}">${this.esc(character)}</button>`).join('')}
+      </div>
+      ${characters.map((character, index) => {
+        const related = comments.filter(comment => String(comment.chapter_title || '').trim() === String(row.chapter || '').trim() &&
+          String(comment.character || '').trim().toLowerCase() === character.toLowerCase());
+        return `<section class="c2-journal-voice" role="tabpanel" id="${id(index)}"
+          aria-labelledby="${id(index)}-tab" ${index === activeIndex ? '' : 'hidden'}>
+          ${this.textMarkup(row[character.toLowerCase()], 'No entry yet.')}
+          <button type="button" class="c2-ink-link" data-c2-action="edit-entry">${row[character.toLowerCase()] ? 'Edit entry' : 'Write entry'}</button>
+          <form data-c2-journal-form="entry" data-character="${this.esc(character)}" hidden>
+            <label>Journal entry<textarea name="text" rows="6" required>${this.esc(row[character.toLowerCase()] || '')}</textarea></label>
+            <div class="c2-journal-form-actions"><button type="submit">Save entry</button><button type="button" data-c2-action="cancel-entry">Cancel</button></div>
+            <span class="c2-journal-status" role="status"></span>
+          </form>
+          <div class="c2-journal-comments">${related.map(comment => `<div>${this.textMarkup(comment.text, '')}<small>— ${this.lineMarkup(comment.author || 'Anonymous')}</small></div>`).join('')}</div>
+          <form data-c2-journal-form="comment" data-character="${this.esc(character)}">
+            <label>Leave a comment<textarea name="text" rows="2" required></textarea></label>
+            <label>Your name<input name="author" required maxlength="150"></label>
+            <div class="c2-journal-form-actions"><button type="submit">Add comment</button></div>
+            <span class="c2-journal-status" role="status"></span>
+          </form>
+        </section>`;
+      }).join('')}
+    </div>`;
+  }
+
+  selectJournalTab(tab) {
+    const article = tab?.closest('[data-c2-journal-index]');
+    if (!article) return;
+    const row = this.currentArchiveRows?.[Number(article.dataset.c2JournalIndex)];
+    if (!row) return;
+    this.journalTabs.set(String(row.chapter || ''), tab.dataset.character);
+    article.querySelectorAll('[role="tab"]').forEach(button => {
+      const selected = button === tab;
+      button.setAttribute('aria-selected', String(selected));
+      button.tabIndex = selected ? 0 : -1;
+    });
+    article.querySelectorAll('[role="tabpanel"]').forEach(panel => {
+      panel.hidden = panel.id !== tab.getAttribute('aria-controls');
+    });
   }
 
   toggleJournalForm(target, show) {
