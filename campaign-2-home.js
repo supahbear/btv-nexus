@@ -355,7 +355,7 @@ class Campaign2Home {
         <button type="button" class="c2-journal-button" data-c2-action="new-chapter">+ New chapter</button>
         <form id="c2NewChapterForm" data-c2-journal-form="chapter" hidden>
           <label>Chapter title<input name="chapter" required maxlength="120"></label>
-          <label>Date or dispatch heading<input name="recap_date" maxlength="300"></label>
+          <label>Date or dispatch heading<textarea name="recap_date" rows="3" maxlength="300"></textarea></label>
           <label>Chapter summary<textarea name="entry" rows="5"></textarea></label>
           <div class="c2-journal-form-actions"><button type="submit">Create chapter</button><button type="button" data-c2-action="cancel-chapter">Cancel</button></div>
           <span class="c2-journal-status" role="status"></span>
